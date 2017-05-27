@@ -1,5 +1,7 @@
 require_relative '../app/user'
 require_relative '../app/account'
+require_relative '../app/exceptions/insufficient_age_exception'
+
 require 'rspec'
 
 describe User do
@@ -12,8 +14,8 @@ describe User do
     expect(@user.fullname).to eq "Vasya" + " " + "Ivanov"
   end
 
-  it 'is older then 18' do
-    expect {User.new("Ivan", "Ivanov", 10)}.to raise_error(RuntimeError)
+  it 'is younger then 18' do
+    expect {User.new("Ivan", "Ivanov", 10)}.to raise_error(InsufficientAgeException)
   end
 
   it 'has an account' do

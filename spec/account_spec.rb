@@ -21,40 +21,70 @@ RSpec.describe 'Account' do
   end
 
   it 'has a balance in the start' do
-    expect(@account.balance).to be 0
+    expect(@account.currencies).to_not be nil
   end
 
   context 'when a transfer to another account' do
 
-    before(:all) do
-      @other_user = User.new('Petya', 'Petrov', 25)
-      @other_account = @other_user.account
+    before(:each) do
+      @btc_uuid = 0
+      @eur_uuid = 0
+      @usd_uuid = 0
+      @gbp_uuid = 0
+      @account.currencies.each {|uuid, hash| @btc_uuid = uuid if hash.key?(:BTC)}
+      @account.currencies.each {|uuid, hash| @eur_uuid = uuid if hash.key?(:EUR)}
+      @account.currencies.each {|uuid, hash| @usd_uuid = uuid if hash.key?(:USD)}
+      @account.currencies.each {|uuid, hash| @gbp_uuid = uuid if hash.key?(:GBP)}
     end
-
     context 'and the subject account has sufficient funds' do
 
       before(:each) do
-        @account.balance = 50
+        @account.currencies.each_value {|purse| purse.each {|currency, fund| purse[currency] = fund + 50}}
       end
 
-      it 'transfer to the other account' do
-        expect(@account.transfer(@other_account, 50)).to be_truthy
+      it 'transfer to the other account successful' do
+        expect(@account.exchange_transfers(25, @btc_uuid, @eur_uuid)).to be_truthy
       end
 
-      it 'transfer from the other account' do
-        expect(@other_account.transfer(@account, 50)).to be_truthy
+      it 'checking the receipt of funds to the account' do
+        expect {@account.exchange_transfers(25, @btc_uuid, @eur_uuid)}.to change {@account.currencies[@eur_uuid][:EUR]}.from(50).to(44082.0)
+      end
+
+      it 'check for withdrawals made from account' do
+        expect {@account.exchange_transfers(25, @btc_uuid, @eur_uuid)}.to change {@account.currencies[@btc_uuid][:BTC]}.from(50).to(24.75)
+      end
+
+      it 'checking lowest possible transfer funds amount' do
+        expect(@account.exchange_transfers(0.1, @eur_uuid, @usd_uuid)).to be_truthy
       end
     end
 
     context 'and the subject account has not enough funds' do
 
+      before(:each) do
+        @account.currencies.each_value {|purse| purse.each {|currency, fund| purse[currency] = fund + 10}}
+      end
+
       it 'transfer to the other account' do
-        expect {@account.transfer(@other_account, 50)}.to raise_error(RuntimeError)
+        expect {@account.exchange_transfers(25, @btc_uuid, @eur_uuid)}.to raise_error(InsufficientFundsException)
+      end
+
+      it 'transfer to the other account amount = 0' do
+        expect {@account.exchange_transfers(0, @usd_uuid, @eur_uuid)}.to raise_error(InvalidParameterException)
       end
 
       it 'transfer to the other account amount nil' do
-        expect {@account.transfer(@other_account, 0)}.to raise_error(RuntimeError)
+        expect {@account.exchange_transfers(nil, @btc_uuid, @gbp_uuid)}.to raise_error(InvalidParameterException)
       end
+
+      it 'transfer to the other account negative amount' do
+        expect {@account.exchange_transfers(-25, @btc_uuid, @gbp_uuid)}.to raise_error(InvalidParameterException)
+      end
+
+      it 'checking lowest possible transfer funds amount exception' do
+        expect {@account.exchange_transfers(0.09, @btc_uuid, @gbp_uuid)}.to raise_error(InvalidParameterException)
+      end
+
     end
-  end
+   end
 end
