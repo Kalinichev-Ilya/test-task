@@ -1,0 +1,2 @@
+class InsufficientAgeException < Exception
+end
