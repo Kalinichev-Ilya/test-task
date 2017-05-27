@@ -1,4 +1,5 @@
 require_relative 'account'
+require_relative 'exceptions/insufficient_age_exception'
 
 class User
   attr_reader :name, :lname, :fullname, :age, :account
@@ -14,7 +15,7 @@ class User
   private
 
   def validate_age(user_age)
-      raise RuntimeError, 'So young!' if user_age < 18
-      @age = user_age
+    raise InsufficientAgeException, "So young! Age = #{user_age}, must be >= 18." if user_age < 18
+    @age = user_age
   end
 end
